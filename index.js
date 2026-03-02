@@ -38,19 +38,32 @@ app.get("/", (req, res) => {
 
 app.get("/expenses", async (req, res) => {
   if (req.isAuthenticated()) {
-    const result = await db.query("SELECT * FROM ");
-    res.json({ message: "user authenticated" });
+    const fKeyFrdb = req.user.s_no;
+    const result = await db.query("SELECT * FROM expenses where user_id = $1", [
+      fKeyFrdb,
+    ]);
+    res.json(result.rows);
   } else {
     res.json({ message: "not authenticated " });
   }
 });
 
-app.post("/expensis", async (req, res) => {
-  console.log(req.body);
+app.post("/expenses", async (req, res) => {
   if (req.isAuthenticated()) {
+    const fKeyFrdb = req.user.s_no;
+    const today = new Date();
+    const formattedDate = today.toISOString().split("T")[0];
+    let final;
     try {
-      const result = await db.query("SELECT * FROM ");
-    } catch (err) {}
+      const result = await db.query(
+        "INSERT INTO expenses (user_id, expense_amount, expense_date) VALUES ($1,$2,$3) RETURNING * ",
+        [fKeyFrdb, req.body.expenseAmt, formattedDate],
+      );
+      // res.json({ message: "data added successfully" });
+      res.redirect("/expenses");
+    } catch (err) {
+      console.log(err);
+    }
   } else {
     res.json({ message: "not authenticated " });
   }
@@ -111,7 +124,7 @@ passport.use(
       if (result.rowCount > 0) {
         const user = result.rows[0];
         const storedHashPass = user.password;
-        bcrypt.compare(username, storedHashPass, (err, result) => {
+        bcrypt.compare(password, storedHashPass, (err, result) => {
           if (err) {
             return cb(err);
           } else {
